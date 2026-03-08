@@ -29,7 +29,6 @@ st.markdown(f"""
     .customer-cell {{ line-height: 1.2; }}
     .customer-name {{ font-weight: bold; color: {'#e60012' if st.session_state.theme == 'White' else '#58a6ff'}; }}
     .sales-name {{ font-size: 0.85em; color: #8b949e; }}
-    /* Sembunyikan Menu */
     #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
@@ -42,27 +41,25 @@ st.title("Unit Delivery Control Tower")
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
-    df = df.dropna(subset=['Customer Name', 'Salesman Name'])
+    # Hapus baris kosong
+    df = df.dropna(subset=['Customer Name', 'Salesman Name', 'Func.Loc'])
     
-    # Mapping Lokasi Baru
-    def map_status(loc):
-        loc = str(loc).upper()
-        if "CBN" in loc: return "PDC Cibinong"
-        elif "CIBITUNG" in loc: return "NVDC Cibitung"
-        elif "KARAWANG" in loc: return "NVDC Karawang"
-        return "PROSES"
-
-    df['Posisi'] = df['Func.Loc'].apply(map_status)
+    # DINAMIS: Gunakan isi Func.Loc apa adanya sebagai Posisi
+    df['Posisi'] = df['Func.Loc'].astype(str)
     
+    # Filter Salesman
     sales_list = ["Semua Salesman"] + sorted(df['Salesman Name'].unique().tolist())
     sales_search = st.selectbox("👔 Filter Salesman", options=sales_list)
     f_df = df[df['Salesman Name'] == sales_search] if sales_search != "Semua Salesman" else df
 
-    # Metrics Row
-    c1, c2, c3 = st.columns(3)
-    c1.markdown(f'<div class="metric-card">🏭 NVDC Karawang<br><h2>{len(f_df[f_df.Posisi=="NVDC Karawang"])}</h2></div>', unsafe_allow_html=True)
-    c2.markdown(f'<div class="metric-card">🚛 NVDC Cibitung<br><h2>{len(f_df[f_df.Posisi=="NVDC Cibitung"])}</h2></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="metric-card" style="border-color:#58a6ff;">🏁 PDC Cibinong<br><h2>{len(f_df[f_df.Posisi=="PDC Cibinong"])}</h2></div>', unsafe_allow_html=True)
+    # Dapatkan daftar unik lokasi untuk Metric Cards secara otomatis
+    unique_locations = sorted(f_df['Posisi'].unique())
+    
+    # Tampilkan Metric Card sebanyak lokasi yang ada
+    cols = st.columns(len(unique_locations) if len(unique_locations) > 0 else 1)
+    for i, loc in enumerate(unique_locations):
+        count = len(f_df[f_df.Posisi == loc])
+        cols[i].markdown(f'<div class="metric-card">📍 {loc}<br><h2>{count}</h2></div>', unsafe_allow_html=True)
 
     # Tabel Utama
     st.markdown("### 📋 Detail Status Unit")
