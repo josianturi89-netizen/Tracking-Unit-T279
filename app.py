@@ -9,30 +9,40 @@ st.set_page_config(page_title="Auto2000 Dashboard", layout="wide")
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Dark'
 
-# Konfigurasi Path
+# Konfigurasi Path Penyimpanan
 DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "latest_data.xlsx")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Logika Warna Dinamis
 if st.session_state.theme == 'Dark':
-    bg_color, text_color, card_bg = "#0e1117", "#ffffff", "#1c2128"
+    bg_color = "#0e1117"        
+    sidebar_color = "#161b22"    # Navy gelap untuk sidebar
+    text_color = "#ffffff"       
+    card_bg = "#1c2128"         
+    tab_text_color = "#ffffff"   
 else:
-    bg_color, text_color, card_bg = "#ffffff", "#000000", "#f0f2f6"
+    bg_color = "#ffffff"
+    sidebar_color = "#f0f2f6"
+    text_color = "#000000"
+    card_bg = "#f0f2f6"
+    tab_text_color = "#000000"
 
 header_color = "#e60012"
 
-# CSS Kustom (Termasuk sinkronisasi Sidebar)
+# CSS Kustom (Sinkronisasi Sidebar, Tab, dan Teks)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-    [data-testid="stSidebar"] {{ background-color: {'#0e1117' if st.session_state.theme == 'Dark' else '#f0f2f6'}; }}
+    [data-testid="stSidebar"] {{ background-color: {sidebar_color}; }}
+    button[data-baseweb="tab"] {{ color: {tab_text_color} !important; }}
     .brand-box {{ background-color: {header_color}; color: white; padding: 20px; border-radius: 10px; text-align: center; font-weight: 900; }}
-    .metric-card {{ background-color: {card_bg}; border: 1px solid #30363d; border-radius: 10px; padding: 15px; text-align: center; }}
+    .metric-card {{ background-color: {card_bg}; border: 1px solid #30363d; border-radius: 10px; padding: 15px; text-align: center; color: {text_color}; }}
     thead tr th {{ background-color: {header_color} !important; color: white !important; text-align: center !important; }}
     .customer-name {{ font-weight: bold; color: {'#58a6ff' if st.session_state.theme == 'Dark' else '#004a99'}; }}
     .sales-name {{ font-size: 0.85em; color: {'#8b949e' if st.session_state.theme == 'Dark' else '#555555'}; }}
     .text-center {{ text-align: center !important; font-size: 1.2em; }}
+    [data-testid="stSidebar"] span, [data-testid="stSidebar"] div {{ color: {text_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
 
