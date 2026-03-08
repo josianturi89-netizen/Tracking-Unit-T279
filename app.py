@@ -1,26 +1,27 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import numpy as np
 
 # 1. Konfigurasi Halaman
-st.set_page_config(page_title="Auto2000 Dramaga Bogor - Tracking Unit", layout="wide")
+st.set_page_config(page_title="Auto2000 Dramaga - Sales Dashboard", layout="wide")
 
-# 2. Sidebar - Judul Custom Warna
+# 2. Sidebar Branding
 st.sidebar.markdown("""
     <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #333;">
-        <h1 style="color: #FF0000; margin-bottom: 0; font-family: sans-serif; font-weight: bold;">Auto2000</h1>
-        <h3 style="color: #FFFFFF; margin-top: 0; font-family: sans-serif;">Dramaga Bogor</h3>
+        <h1 style="color: #FF0000; margin-bottom: 0; font-weight: bold;">Auto2000</h1>
+        <h3 style="color: #FFFFFF; margin-top: 0;">Dramaga Bogor</h3>
+        <p style="color: #aaa; font-size: 0.8rem;">Admin Support for Salesman</p>
         <hr style="border-color: #444;">
     </div>
     <br>
     """, unsafe_allow_html=True)
 
-st.sidebar.header("📁 Update Data AR")
-uploaded_file = st.sidebar.file_uploader("Upload file Excel/CSV di sini", type=["xlsx", "xls", "csv"])
+st.sidebar.header("📁 Upload Database AR")
+uploaded_file = st.sidebar.file_uploader("Upload File Excel/CSV", type=["xlsx", "xls", "csv"])
 
 # 3. Konten Utama
-st.title("🚗 Dashboard Monitoring Logistik Unit")
-st.markdown("---")
+st.title("🚛 Dashboard Monitoring Delivery Unit")
+st.markdown("Dashboard ini melacak unit berdasarkan kata kunci lokasi (Karawang, Cibitung, atau CBN).")
 
 if uploaded_file is not None:
     try:
@@ -29,66 +30,72 @@ if uploaded_file is not None:
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
-        
-        # --- METRIC SUMMARY ---
-        counts = df['Func.Loc'].value_counts()
-        
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Pabrik (KARAWANG)", counts.get("TNVDC-KARAWANG", 0))
-        m2.metric("Transit (CIBITUNG)", counts.get("TNVDC-CIBITUNG", 0))
-        m3.metric("Ready (TPDC-CBN)", counts.get("TPDC-CBN", 0))
-        
-        st.markdown("---")
 
-        # --- FITUR PENCARIAN & FILTER ---
-        st.subheader("🔍 Pencarian & Monitoring Unit")
+        # --- DATA CLEANING & SMART MAPPING ---
+        # 1. Leasing Name: Isi kosong dengan 'Tunai'
+        if 'Leasing Name' in df.columns:
+            df['Leasing Name'] = df['Leasing Name'].fillna('Tunai')
         
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            search_cust = st.text_input("👤 Cari Nama Customer")
-        with col_s2:
-            search_sales = st.text_input("👔 Cari Nama Salesman")
-        with col_s3:
-            loc_options = ["Semua Lokasi"] + df['Func.Loc'].dropna().unique().tolist()
-            filter_loc = st.selectbox("📍 Filter Lokasi", options=loc_options)
+        # 2. Billing Date: Post Date -> Date Format
+        if 'Post Date' in df.columns:
+            df['Billing Date'] = pd.to_datetime(df['Post Date'], errors='coerce').dt.strftime('%d-%m-%Y')
 
-        # Logika Filtering
-        mask = df['Customer Name'].str.contains(search_cust, case=False, na=False) & \
-               df['Salesman Name'].str.contains(search_sales, case=False, na=False)
+        # 3. Smart Func.Loc Mapping (Mencari keyword)
+        def map_location(loc):
+            loc = str(loc).upper()
+            if "CBN" in loc:
+                return "READY (CBN)"
+            elif "CIBITUNG" in loc:
+                return "TRANSIT (CIBITUNG)"
+            elif "KARAWANG" in loc:
+                return "PABRIK (KARAWANG)"
+            else:
+                return "LAINNYA / PROSES"
+
+        df['Status Unit'] = df['Func.Loc'].apply(map_location)
+
+        # --- FILTERING ---
+        st.subheader("🔍 Cari Data Unit")
+        c1, c2 = st.columns(2)
+        with c1:
+            sales_list = ["Semua Salesman"] + sorted(df['Salesman Name'].dropna().unique().tolist())
+            sales_search = st.selectbox("Pilih Nama Salesman", options=sales_list)
+        with c2:
+            cust_search = st.text_input("Cari Nama Customer")
+
+        # Logika Filter
+        mask = df['Customer Name'].str.contains(cust_search, case=False, na=False)
+        if sales_search != "Semua Salesman":
+            mask = mask & (df['Salesman Name'] == sales_search)
         
-        if filter_loc != "Semua Lokasi":
-            mask = mask & (df['Func.Loc'] == filter_loc)
-            
         filtered_df = df[mask]
 
-        # Menampilkan Tabel
-        st.dataframe(
-            filtered_df[['Customer Name', 'Salesman Name', 'Func.Loc', 'Age', 'Keterangan']],
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # --- GRAFIK VISUAL ---
+        # --- VISUALISASI PIPELINE ---
         st.markdown("---")
-        order = ["TNVDC-KARAWANG", "TNVDC-CIBITUNG", "TPDC-CBN"]
-        chart_data = df['Func.Loc'].value_counts().reindex(order).fillna(0).reset_index()
-        chart_data.columns = ['Lokasi', 'Jumlah Unit']
+        
+        # Hitung berdasarkan kategori baru
+        total_karawang = filtered_df[filtered_df['Status Unit'] == "PABRIK (KARAWANG)"].shape[0]
+        total_cibitung = filtered_df[filtered_df['Status Unit'] == "TRANSIT (CIBITUNG)"].shape[0]
+        total_cbn = filtered_df[filtered_df['Status Unit'] == "READY (CBN)"].shape[0]
 
-        fig = px.bar(
-            chart_data,
-            x='Lokasi', y='Jumlah Unit', 
-            color='Lokasi',
-            text='Jumlah Unit',
-            color_discrete_map={
-                "TNVDC-KARAWANG": "#FF0000", 
-                "TNVDC-CIBITUNG": "#FFAA00", 
-                "TPDC-CBN": "#00CC96"
-            }
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        m1, m2, m3 = st.columns(3)
+        m1.metric("1. PABRIK (KARAWANG)", total_karawang)
+        m2.metric("2. TRANSIT (CIBITUNG)", total_cibitung)
+        m3.metric("3. READY (CBN)", total_cbn, delta="SIAP KIRIM" if total_cbn > 0 else None)
+
+        # --- TABEL DETAIL ---
+        st.markdown("---")
+        st.subheader("📋 Detail Unit untuk Salesman")
+        
+        # Menggunakan kolom yang sudah dipetakan
+        display_df = filtered_df[[
+            'Salesman Name', 'Customer Name', 'Leasing Name', 
+            'Equipment', 'Billing No', 'Billing Date', 'Status Unit', 'Keterangan'
+        ]].rename(columns={'Equipment': 'No. Rangka', 'Status Unit': 'Posisi Unit Saat Ini'})
+        
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     except Exception as e:
-        st.error(f"Gagal membaca file. (Error: {e})")
+        st.error(f"Gagal memproses file. Pastikan kolom sesuai. Detail: {e}")
 else:
-    st.warning("👈 Silakan upload file laporan AR Anda untuk memulai.")
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_Auto2000.png/640px-Logo_Auto2000.png", width=250)
+    st.info("👈 Menunggu Admin mengunggah file Excel terbaru.")
