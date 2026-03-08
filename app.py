@@ -30,18 +30,31 @@ else:
 
 header_color = "#e60012"
 
-# CSS Kustom (Sinkronisasi Sidebar, Tab, dan Teks)
+# CSS Kustom (Termasuk Branding Putih & Sinkronisasi Sidebar)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
     [data-testid="stSidebar"] {{ background-color: {sidebar_color}; }}
     button[data-baseweb="tab"] {{ color: {tab_text_color} !important; }}
-    .brand-box {{ background-color: {header_color}; color: white; padding: 20px; border-radius: 10px; text-align: center; font-weight: 900; }}
+    
+    /* Branding Box dengan warna teks putih permanen */
+    .brand-box {{ 
+        background-color: {header_color}; 
+        color: white !important; 
+        padding: 20px; 
+        border-radius: 10px; 
+        text-align: center; 
+        font-weight: 900; 
+    }}
+    
     .metric-card {{ background-color: {card_bg}; border: 1px solid #30363d; border-radius: 10px; padding: 15px; text-align: center; color: {text_color}; }}
     thead tr th {{ background-color: {header_color} !important; color: white !important; text-align: center !important; }}
+    
     .customer-name {{ font-weight: bold; color: {'#58a6ff' if st.session_state.theme == 'Dark' else '#004a99'}; }}
     .sales-name {{ font-size: 0.85em; color: {'#8b949e' if st.session_state.theme == 'Dark' else '#555555'}; }}
     .text-center {{ text-align: center !important; font-size: 1.2em; }}
+    
+    /* Sinkronisasi teks sidebar */
     [data-testid="stSidebar"] span, [data-testid="stSidebar"] div {{ color: {text_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
