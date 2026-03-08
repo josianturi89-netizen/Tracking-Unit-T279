@@ -58,45 +58,23 @@ with tab_monitor:
         cols_cust = [c for c in df.columns if 'Customer Name' in c][0]
         cols_sales = [c for c in df.columns if 'Salesman Name' in c][0]
         cols_equip = [c for c in df.columns if 'Equipment' in c][0]
+        cols_leasing = [c for c in df.columns if 'Leasing Name' in c][0] # Kolom Leasing
         cols_detail = [c for c in df.columns if 'Detail' in c][0]
         cols_status = [c for c in df.columns if 'Status Kirim' in c][0]
         func_cols = [c for c in df.columns if 'Func.Loc' in c]
         
+        # Logika Posisi
         df['Posisi'] = df.apply(lambda row: next((row[c] for c in func_cols if pd.notna(row[c])), "Unknown"), axis=1)
         
-        # Logika Status Pembayaran (Menggunakan HTML class agar bisa di-center)
+        # Logika Status Pembayaran
         def cek_pembayaran(val):
             simbol = "✅" if str(val).strip() in ["Lunas DP", "Lunas AR"] else "➖"
             return f'<div class="text-center">{simbol}</div>'
         
         df['Status Pembayaran'] = df[cols_detail].apply(cek_pembayaran)
         
+        # Logika Leasing (Jika kosong, isi "Tunai")
+        df['Leasing'] = df[cols_leasing].fillna("Tunai")
+        
         # Sortir
-        order_map = {'TNVDC-KARAWANG': 1, 'TNVDC-CIBITUNG': 2, 'TPDC-CBN': 3, 'TCUST': 4}
-        df['Urutan'] = df['Posisi'].map(order_map).fillna(5)
-        df = df.sort_values('Urutan')
-        
-        # Filter Salesman
-        sales_list = ["Semua Salesman"] + sorted(df[cols_sales].dropna().unique().tolist())
-        selected_sales = st.selectbox("👔 Filter Salesman", sales_list)
-        f_df = df[df[cols_sales] == selected_sales] if selected_sales != "Semua Salesman" else df
-        
-        # Metric Cards
-        cols = st.columns(4)
-        labels = ['TNVDC-KARAWANG', 'TNVDC-CIBITUNG', 'TPDC-CBN', 'TCUST']
-        for i, loc in enumerate(labels):
-            cols[i].markdown(f'<div class="metric-card">📍 {loc}<br><h2>{len(f_df[f_df.Posisi == loc])}</h2></div>', unsafe_allow_html=True)
-            
-        # Tabel
-        st.markdown("### 📋 Detail Status Unit")
-        display_df = f_df.copy()
-        display_df['Customer & Salesman'] = display_df.apply(lambda x: f'<div class="customer-name">{x[cols_cust]}</div><div class="sales-name">👤 {x[cols_sales]}</div>', axis=1)
-        
-        # Urutan Kolom Final
-        final_df = display_df[['Customer & Salesman', cols_equip, cols_detail, 'Status Pembayaran', cols_status, 'Posisi']]
-        final_df = final_df.rename(columns={cols_equip: 'No. Rangka', cols_detail: 'Detail', cols_status: 'Status Kirim'})
-        
-        # Render tabel
-        st.write(final_df.to_html(escape=False, index=False), unsafe_allow_html=True)
-    else:
-        st.info("Belum ada data. Silakan upload file di tab 'Admin & Upload'.")
+        order_map = {'TNVDC-KARAWANG': 1, 'TNVDC-CIBITUNG': 2, 'TPDC-
