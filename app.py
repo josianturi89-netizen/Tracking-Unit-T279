@@ -8,7 +8,7 @@ st.set_page_config(page_title="Auto2000 Dashboard", layout="wide")
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Dark'
 
-# Fungsi untuk memilih tema
+# Sidebar - Pilihan Tema
 theme_mode = st.sidebar.radio("🎨 Pilih Mode Tampilan:", ['Dark', 'White'], index=0 if st.session_state.theme == 'Dark' else 1)
 st.session_state.theme = theme_mode
 
@@ -29,6 +29,8 @@ st.markdown(f"""
     .customer-cell {{ line-height: 1.2; }}
     .customer-name {{ font-weight: bold; color: {'#e60012' if st.session_state.theme == 'White' else '#58a6ff'}; }}
     .sales-name {{ font-size: 0.85em; color: #8b949e; }}
+    /* Sembunyikan Menu */
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
@@ -42,11 +44,12 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
     df = df.dropna(subset=['Customer Name', 'Salesman Name'])
     
+    # Mapping Lokasi Baru
     def map_status(loc):
         loc = str(loc).upper()
-        if "CBN" in loc: return "READY (CBN)"
-        elif "CIBITUNG" in loc: return "TRANSIT (CIBITUNG)"
-        elif "KARAWANG" in loc: return "PABRIK (KARAWANG)"
+        if "CBN" in loc: return "PDC Cibinong"
+        elif "CIBITUNG" in loc: return "NVDC Cibitung"
+        elif "KARAWANG" in loc: return "NVDC Karawang"
         return "PROSES"
 
     df['Posisi'] = df['Func.Loc'].apply(map_status)
@@ -57,11 +60,11 @@ if uploaded_file is not None:
 
     # Metrics Row
     c1, c2, c3 = st.columns(3)
-    c1.markdown(f'<div class="metric-card">🏭 Pabrik<br><h2>{len(f_df[f_df.Posisi=="PABRIK (KARAWANG)"])}</h2></div>', unsafe_allow_html=True)
-    c2.markdown(f'<div class="metric-card">🚛 Transit<br><h2>{len(f_df[f_df.Posisi=="TRANSIT (CIBITUNG)"])}</h2></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="metric-card">🏁 Ready CBN<br><h2>{len(f_df[f_df.Posisi=="READY (CBN)"])}</h2></div>', unsafe_allow_html=True)
+    c1.markdown(f'<div class="metric-card">🏭 NVDC Karawang<br><h2>{len(f_df[f_df.Posisi=="NVDC Karawang"])}</h2></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="metric-card">🚛 NVDC Cibitung<br><h2>{len(f_df[f_df.Posisi=="NVDC Cibitung"])}</h2></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="metric-card" style="border-color:#58a6ff;">🏁 PDC Cibinong<br><h2>{len(f_df[f_df.Posisi=="PDC Cibinong"])}</h2></div>', unsafe_allow_html=True)
 
-    # Tabel Utama Full Width
+    # Tabel Utama
     st.markdown("### 📋 Detail Status Unit")
     col_show = 'Detail' if 'Detail' in f_df.columns else 'Keterangan'
     display_df = f_df.copy()
@@ -73,6 +76,3 @@ if uploaded_file is not None:
     st.write(display_df[['Posisi', 'Customer & Salesman', 'Equipment', col_show]].rename(columns={'Equipment': 'No. Rangka', col_show: 'Detail'}).to_html(escape=False, index=False), unsafe_allow_html=True)
 else:
     st.info("👈 Silakan upload file Excel untuk memulai.")
-
-# Sembunyikan menu bawaan agar terlihat seperti aplikasi custom
-st.markdown("""<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>""", unsafe_allow_html=True)
