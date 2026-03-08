@@ -4,72 +4,78 @@ import pandas as pd
 # Konfigurasi Halaman
 st.set_page_config(page_title="Auto2000 Dashboard", layout="wide")
 
-# Inisialisasi state untuk tema
+# State untuk tema
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Dark'
 
-# Sidebar - Pilihan Tema
 theme_mode = st.sidebar.radio("🎨 Pilih Mode Tampilan:", ['Dark', 'White'], index=0 if st.session_state.theme == 'Dark' else 1)
 st.session_state.theme = theme_mode
 
-# Konfigurasi CSS Dinamis
-if st.session_state.theme == 'Dark':
-    bg_color, text_color, card_bg, border_color = "#0e1117", "#ffffff", "#1c2128", "#30363d"
-else:
-    bg_color, text_color, card_bg, border_color = "#ffffff", "#000000", "#f0f2f6", "#d1d5db"
-
+# Konfigurasi CSS
+bg_color, text_color, card_bg = ("#0e1117", "#ffffff", "#1c2128") if st.session_state.theme == 'Dark' else ("#ffffff", "#000000", "#f0f2f6")
 header_color = "#e60012"
 
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
     .brand-box {{ background-color: {header_color}; color: white; padding: 25px; border-radius: 12px; text-align: center; font-weight: 900; font-size: 1.5em; margin-bottom: 25px; }}
-    .metric-card {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 20px; text-align: center; }}
+    .metric-card {{ background-color: {card_bg}; border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; }}
     thead tr th {{ background-color: {header_color} !important; color: white !important; text-align: center !important; }}
-    .customer-cell {{ line-height: 1.2; }}
     .customer-name {{ font-weight: bold; color: {'#e60012' if st.session_state.theme == 'White' else '#58a6ff'}; }}
     .sales-name {{ font-size: 0.85em; color: #8b949e; }}
-    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-# Branding Sidebar
 st.sidebar.markdown('<div class="brand-box">AUTO2000<br>Dramaga Bogor</div>', unsafe_allow_html=True)
 uploaded_file = st.sidebar.file_uploader("📂 Upload Data Excel", type=["xlsx", "csv"])
 
 st.title("Unit Delivery Control Tower")
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file) if uploaded_file.name.endswith('.csv') else pd.read_excel(uploaded_file)
-    # Hapus baris kosong
-    df = df.dropna(subset=['Customer Name', 'Salesman Name', 'Func.Loc'])
+    # Membaca header dua baris
+    df = pd.read_excel(uploaded_file, header=[0, 1])
     
-    # DINAMIS: Gunakan isi Func.Loc apa adanya sebagai Posisi
-    df['Posisi'] = df['Func.Loc'].astype(str)
+    # Flatten header (menggabungkan baris 1 dan 2)
+    df.columns = [f"{a}_{b}".replace("_nan", "").strip() for a, b in df.columns]
     
-    # Filter Salesman
-    sales_list = ["Semua Salesman"] + sorted(df['Salesman Name'].unique().tolist())
-    sales_search = st.selectbox("👔 Filter Salesman", options=sales_list)
-    f_df = df[df['Salesman Name'] == sales_search] if sales_search != "Semua Salesman" else df
+    # Menemukan kolom Func.Loc
+    func_cols = [c for c in df.columns if 'Func.Loc' in c]
+    
+    # Logika menggabungkan 4 kolom lokasi menjadi 1
+    def get_posisi(row):
+        for col in func_cols:
+            if pd.notna(row[col]): return row[col]
+        return "Unknown"
 
-    # Dapatkan daftar unik lokasi untuk Metric Cards secara otomatis
-    unique_locations = sorted(f_df['Posisi'].unique())
+    df['Posisi'] = df.apply(get_posisi, axis=1)
     
-    # Tampilkan Metric Card sebanyak lokasi yang ada
-    cols = st.columns(len(unique_locations) if len(unique_locations) > 0 else 1)
-    for i, loc in enumerate(unique_locations):
+    # Filter Salesman (mengambil kolom yang tepat)
+    sales_col = [c for c in df.columns if 'Salesman Name' in c][0]
+    cust_col = [c for c in df.columns if 'Customer Name' in c][0]
+    equip_col = [c for c in df.columns if 'Equipment' in c][0]
+    detail_col = [c for c in df.columns if 'Detail' in c][0]
+    
+    sales_list = ["Semua Salesman"] + sorted(df[sales_col].dropna().unique().tolist())
+    sales_search = st.selectbox("👔 Filter Salesman", options=sales_list)
+    
+    f_df = df[df[sales_col] == sales_search] if sales_search != "Semua Salesman" else df
+
+    # Metric Cards (Dinamis sesuai data)
+    locs = f_df['Posisi'].unique()
+    cols = st.columns(len(locs) if len(locs) > 0 else 1)
+    for i, loc in enumerate(locs):
         count = len(f_df[f_df.Posisi == loc])
         cols[i].markdown(f'<div class="metric-card">📍 {loc}<br><h2>{count}</h2></div>', unsafe_allow_html=True)
 
     # Tabel Utama
     st.markdown("### 📋 Detail Status Unit")
-    col_show = 'Detail' if 'Detail' in f_df.columns else 'Keterangan'
     display_df = f_df.copy()
     display_df['Customer & Salesman'] = display_df.apply(
-        lambda x: f'<div class="customer-cell"><div class="customer-name">{x["Customer Name"]}</div><div class="sales-name">👤 {x["Salesman Name"]}</div></div>', 
-        axis=1
+        lambda x: f'<div class="customer-name">{x[cust_col]}</div><div class="sales-name">👤 {x[sales_col]}</div>', axis=1
     )
     
-    st.write(display_df[['Posisi', 'Customer & Salesman', 'Equipment', col_show]].rename(columns={'Equipment': 'No. Rangka', col_show: 'Detail'}).to_html(escape=False, index=False), unsafe_allow_html=True)
+    st.write(display_df[['Posisi', 'Customer & Salesman', equip_col, detail_col]]
+             .rename(columns={equip_col: 'No. Rangka', detail_col: 'Detail'})
+             .to_html(escape=False, index=False), unsafe_allow_html=True)
 else:
     st.info("👈 Silakan upload file Excel untuk memulai.")
