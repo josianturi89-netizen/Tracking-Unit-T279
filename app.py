@@ -66,6 +66,3 @@ if uploaded_file is not None:
     )
 else:
     st.info("👈 Silakan upload file Excel/CSV di menu samping untuk memulai dashboard.")
-    
-
-[Image of logistics supply chain process]
