@@ -2,81 +2,40 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Set tampilan dashboard
-st.set_page_config(page_title="Dashboard Tracking Unit", layout="wide")
+# 1. Konfigurasi Halaman
+st.set_page_config(page_title="Auto2000 Dramaga Bogor - Tracking Unit", layout="wide")
 
+# 2. Sidebar - Judul Custom Warna
+st.sidebar.markdown(f"""
+    <div style="background-color: #1e1e1e; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #333;">
+        <h1 style="color: #FF0000; margin-bottom: 0; font-family: sans-serif; font-weight: bold;">Auto2000</h1>
+        <h3 style="color: #FFFFFF; margin-top: 0; font-family: sans-serif;">Dramaga Bogor</h3>
+        <hr style="border-color: #444;">
+    </div>
+    <br>
+    """, unsafe_allow_html=True)
+
+st.sidebar.header("📁 Update Data AR")
+uploaded_file = st.sidebar.file_uploader("Upload file Excel/CSV di sini", type=["xlsx", "xls", "csv"])
+
+# 3. Konten Utama
 st.title("🚗 Dashboard Monitoring Logistik Unit")
 st.markdown("---")
 
-# Fitur Upload di Sidebar
-st.sidebar.header("Konfigurasi Data")
-uploaded_file = st.sidebar.file_uploader("Upload File Excel atau CSV", type=["xlsx", "xls", "csv"])
-
 if uploaded_file is not None:
-    # Proses pembacaan file
     try:
+        # Membaca data
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
         
-        # --- BAGIAN VISUAL UTAMA (PIPELINE) ---
-        st.subheader("📊 Ringkasan Alur Unit (Func. Loc)")
-        
-        # Definisikan urutan flow sesuai permintaan user
-        order = ["TNVDC-KARAWANG", "TNVDC-CIBITUNG", "TPDC-CBN"]
-        
-        # Hitung jumlah unit per lokasi
+        # --- METRIC SUMMARY ---
         counts = df['Func.Loc'].value_counts()
         
         m1, m2, m3 = st.columns(3)
-        m1.metric("1. KARAWANG (Pabrik)", counts.get("TNVDC-KARAWANG", 0))
-        m2.metric("2. CIBITUNG (Transit)", counts.get("TNVDC-CIBITUNG", 0))
-        m3.metric("3. CBN (Ready Delivery)", counts.get("TPDC-CBN", 0))
-        
-        st.markdown("---")
-
-        # --- FITUR SEARCH & FILTER ---
-        st.subheader("🔍 Monitoring & Pencarian Unit")
-        
-        # Kolom pencarian interaktif
-        col_s1, col_s2, col_s3 = st.columns(3)
-        with col_s1:
-            search_cust = st.text_input("Cari Nama Customer")
-        with col_s2:
-            search_sales = st.text_input("Cari Nama Salesman")
-        with col_s3:
-            filter_loc = st.multiselect("Filter Lokasi", options=df['Func.Loc'].unique().tolist())
-
-        # Logika Filtering
-        mask = df['Customer Name'].str.contains(search_cust, case=False, na=False) & \
-               df['Salesman Name'].str.contains(search_sales, case=False, na=False)
-        
-        if filter_loc:
-            mask = mask & df['Func.Loc'].isin(filter_loc)
-            
-        filtered_df = df[mask]
-
-        # Tampilkan Tabel
-        st.dataframe(
-            filtered_df[['Customer Name', 'Salesman Name', 'Func.Loc', 'Age', 'Keterangan']],
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # Chart Distribusi
-        st.markdown("---")
-        fig = px.bar(
-            df['Func.Loc'].value_counts().reindex(order).reset_index(),
-            x='Func.Loc', y='count', 
-            title="Posisi Unit dalam Supply Chain",
-            color='Func.Loc',
-            color_discrete_map={"TNVDC-KARAWANG":"#FF4B4B", "TNVDC-CIBITUNG":"#FFAA00", "TPDC-CBN":"#00CC96"}
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Error: Pastikan format kolom Excel sesuai. Detail: {e}")
-else:
-    st.warning("👈 Silakan upload file Excel/CSV Anda pada menu di samping kiri untuk melihat dashboard.")
-    st.info("Catatan: Pastikan file memiliki kolom: 'Customer Name', 'Salesman Name', 'Func.Loc', 'Age', 'Keterangan'")
+        with m1:
+            st.metric("Pabrik (KARAWANG)", counts.get("TNVDC-KARAWANG", 0))
+        with m2:
+            st.metric("Transit (CIBITUNG)", counts.get("TNVDC-CIBITUNG", 0))
+        with m
