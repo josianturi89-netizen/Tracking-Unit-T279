@@ -5,7 +5,7 @@ import os
 # Konfigurasi Halaman
 st.set_page_config(page_title="Auto2000 Dashboard", layout="wide")
 
-# State untuk Theme
+# Inisialisasi Session State untuk Theme
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Dark'
 
@@ -14,7 +14,7 @@ DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "latest_data.xlsx")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Logika Warna berdasarkan Theme
+# Logika Warna Dinamis
 if st.session_state.theme == 'Dark':
     bg_color, text_color, card_bg = "#0e1117", "#ffffff", "#1c2128"
 else:
@@ -22,15 +22,16 @@ else:
 
 header_color = "#e60012"
 
-# CSS Dinamis
+# CSS Kustom (Termasuk sinkronisasi Sidebar)
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    [data-testid="stSidebar"] {{ background-color: {'#0e1117' if st.session_state.theme == 'Dark' else '#f0f2f6'}; }}
     .brand-box {{ background-color: {header_color}; color: white; padding: 20px; border-radius: 10px; text-align: center; font-weight: 900; }}
     .metric-card {{ background-color: {card_bg}; border: 1px solid #30363d; border-radius: 10px; padding: 15px; text-align: center; }}
     thead tr th {{ background-color: {header_color} !important; color: white !important; text-align: center !important; }}
     .customer-name {{ font-weight: bold; color: {'#58a6ff' if st.session_state.theme == 'Dark' else '#004a99'}; }}
-    .sales-name {{ font-size: 0.85em; color: #8b949e; }}
+    .sales-name {{ font-size: 0.85em; color: {'#8b949e' if st.session_state.theme == 'Dark' else '#555555'}; }}
     .text-center {{ text-align: center !important; font-size: 1.2em; }}
     </style>
     """, unsafe_allow_html=True)
@@ -49,6 +50,7 @@ def load_data():
         except: return None
     return None
 
+# Tab Utama
 tab_monitor, tab_admin = st.tabs(["📊 Dashboard Monitoring", "⚙️ Admin & Upload"])
 
 with tab_admin:
@@ -70,7 +72,6 @@ with tab_monitor:
     if df is not None:
         df.columns = [f"{a}_{b}".replace('_nan', '').strip() for a, b in df.columns]
         
-        # Identifikasi kolom
         try:
             cols_cust = [c for c in df.columns if 'Customer Name' in c][0]
             cols_sales = [c for c in df.columns if 'Salesman Name' in c][0]
@@ -79,7 +80,7 @@ with tab_monitor:
             cols_detail = [c for c in df.columns if 'Detail' in c][0]
             cols_status = [c for c in df.columns if 'Status Kirim' in c][0]
             func_cols = [c for c in df.columns if 'Func.Loc' in c]
-        except: st.error("Format Excel tidak sesuai."); st.stop()
+        except: st.error("Format kolom Excel tidak sesuai!"); st.stop()
         
         df['Posisi'] = df.apply(lambda row: next((row[c] for c in func_cols if pd.notna(row[c])), "Unknown"), axis=1)
         df['Status Pembayaran'] = df[cols_detail].apply(lambda val: f'<div class="text-center">{"✅" if str(val).strip() in ["Lunas DP", "Lunas AR"] else "➖"}</div>')
