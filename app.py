@@ -16,7 +16,7 @@ st.markdown(f"""
     <style>
     .brand-box {{ background-color: {header_color}; color: white; padding: 20px; border-radius: 10px; text-align: center; font-weight: 900; }}
     .metric-card {{ background-color: #1c2128; border: 1px solid #30363d; border-radius: 10px; padding: 15px; text-align: center; }}
-    thead tr th {{ background-color: {header_color} !important; color: white !important; }}
+    thead tr th {{ background-color: {header_color} !important; color: white !important; text-align: center !important; }}
     .customer-name {{ font-weight: bold; color: #58a6ff; }}
     .sales-name {{ font-size: 0.85em; color: #8b949e; }}
     </style>
@@ -25,14 +25,14 @@ st.markdown(f"""
 # Sidebar
 st.sidebar.markdown('<div class="brand-box">AUTO2000<br>Dramaga Bogor</div>', unsafe_allow_html=True)
 
-# Tab Utama
-tab_monitor, tab_admin = st.tabs(["📊 Dashboard Monitoring", "⚙️ Admin & Upload"])
-
 # Fungsi untuk memuat data
 def load_data():
     if os.path.exists(DATA_FILE):
         return pd.read_excel(DATA_FILE, header=[0, 1])
     return None
+
+# Tab Utama
+tab_monitor, tab_admin = st.tabs(["📊 Dashboard Monitoring", "⚙️ Admin & Upload"])
 
 # --- TAB ADMIN ---
 with tab_admin:
@@ -41,10 +41,18 @@ with tab_admin:
     if uploaded_file:
         with open(DATA_FILE, "wb") as f:
             f.write(uploaded_file.getbuffer())
-        st.success("Data berhasil diperbarui!")
+        st.success("Data berhasil diperbarui! Silakan kembali ke tab Monitoring.")
 
 # --- TAB MONITORING ---
 with tab_monitor:
+    # Header Judul
+    st.markdown("""
+        <div style="text-align: center; margin-bottom: 25px;">
+            <h2 style="color: white; font-weight: bold; margin-bottom: 5px;">Dashboard Monitoring Unit TSO-Dramaga Bogor</h2>
+            <p style="color: white; opacity: 0.7; font-size: 0.9em; font-style: italic;">For Internal Condition Auto2000 Dramaga Bogor Only</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
     df = load_data()
     
     if df is not None:
@@ -82,12 +90,14 @@ with tab_monitor:
             count = len(f_df[f_df.Posisi == loc])
             cols[i].markdown(f'<div class="metric-card">📍 {loc}<br><h2>{count}</h2></div>', unsafe_allow_html=True)
             
-        # Tabel Utama (Posisi di kanan)
+        # Tabel Utama
         st.markdown("### 📋 Detail Status Unit")
         display_df = f_df.copy()
         display_df['Customer & Salesman'] = display_df.apply(
             lambda x: f'<div class="customer-name">{x[cols_cust]}</div><div class="sales-name">👤 {x[cols_sales]}</div>', axis=1
         )
+        
+        # Posisi dipindah ke paling kanan sesuai permintaan
         final_df = display_df[['Customer & Salesman', cols_equip, cols_detail, 'Posisi']]
         final_df = final_df.rename(columns={cols_equip: 'No. Rangka', cols_detail: 'Detail'})
         
