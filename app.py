@@ -19,6 +19,7 @@ st.markdown(f"""
     thead tr th {{ background-color: {header_color} !important; color: white !important; text-align: center !important; }}
     .customer-name {{ font-weight: bold; color: #58a6ff; }}
     .sales-name {{ font-size: 0.85em; color: #8b949e; }}
+    .text-center {{ text-align: center !important; font-size: 1.2em; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -63,9 +64,10 @@ with tab_monitor:
         
         df['Posisi'] = df.apply(lambda row: next((row[c] for c in func_cols if pd.notna(row[c])), "Unknown"), axis=1)
         
-        # Logika Status Pembayaran (Kolom Baru)
+        # Logika Status Pembayaran (Menggunakan HTML class agar bisa di-center)
         def cek_pembayaran(val):
-            return "✅" if str(val).strip() in ["Lunas DP", "Lunas AR"] else "➖"
+            simbol = "✅" if str(val).strip() in ["Lunas DP", "Lunas AR"] else "➖"
+            return f'<div class="text-center">{simbol}</div>'
         
         df['Status Pembayaran'] = df[cols_detail].apply(cek_pembayaran)
         
@@ -94,6 +96,7 @@ with tab_monitor:
         final_df = display_df[['Customer & Salesman', cols_equip, cols_detail, 'Status Pembayaran', cols_status, 'Posisi']]
         final_df = final_df.rename(columns={cols_equip: 'No. Rangka', cols_detail: 'Detail', cols_status: 'Status Kirim'})
         
+        # Render tabel
         st.write(final_df.to_html(escape=False, index=False), unsafe_allow_html=True)
     else:
         st.info("Belum ada data. Silakan upload file di tab 'Admin & Upload'.")
