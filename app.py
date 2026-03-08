@@ -5,7 +5,7 @@ import os
 # Konfigurasi Halaman
 st.set_page_config(page_title="Auto2000 Dashboard", layout="wide")
 
-# Konfigurasi Path Penyimpanan
+# Konfigurasi Path
 DATA_DIR = "data"
 DATA_FILE = os.path.join(DATA_DIR, "latest_data.xlsx")
 os.makedirs(DATA_DIR, exist_ok=True)
@@ -28,7 +28,10 @@ st.sidebar.markdown('<div class="brand-box">AUTO2000<br>Dramaga Bogor</div>', un
 
 def load_data():
     if os.path.exists(DATA_FILE):
-        return pd.read_excel(DATA_FILE, header=[0, 1])
+        try:
+            return pd.read_excel(DATA_FILE, header=[0, 1])
+        except:
+            return None
     return None
 
 tab_monitor, tab_admin = st.tabs(["📊 Dashboard Monitoring", "⚙️ Admin & Upload"])
@@ -55,26 +58,53 @@ with tab_monitor:
         df.columns = [f"{a}_{b}".replace('_nan', '').strip() for a, b in df.columns]
         
         # Identifikasi kolom
-        cols_cust = [c for c in df.columns if 'Customer Name' in c][0]
-        cols_sales = [c for c in df.columns if 'Salesman Name' in c][0]
-        cols_equip = [c for c in df.columns if 'Equipment' in c][0]
-        cols_leasing = [c for c in df.columns if 'Leasing Name' in c][0] # Kolom Leasing
-        cols_detail = [c for c in df.columns if 'Detail' in c][0]
-        cols_status = [c for c in df.columns if 'Status Kirim' in c][0]
-        func_cols = [c for c in df.columns if 'Func.Loc' in c]
+        try:
+            cols_cust = [c for c in df.columns if 'Customer Name' in c][0]
+            cols_sales = [c for c in df.columns if 'Salesman Name' in c][0]
+            cols_equip = [c for c in df.columns if 'Equipment' in c][0]
+            cols_leasing = [c for c in df.columns if 'Leasing Name' in c][0]
+            cols_detail = [c for c in df.columns if 'Detail' in c][0]
+            cols_status = [c for c in df.columns if 'Status Kirim' in c][0]
+            func_cols = [c for c in df.columns if 'Func.Loc' in c]
+        except IndexError:
+            st.error("Format Excel tidak sesuai. Pastikan header sesuai dengan file sebelumnya.")
+            st.stop()
         
         # Logika Posisi
         df['Posisi'] = df.apply(lambda row: next((row[c] for c in func_cols if pd.notna(row[c])), "Unknown"), axis=1)
         
-        # Logika Status Pembayaran
-        def cek_pembayaran(val):
-            simbol = "✅" if str(val).strip() in ["Lunas DP", "Lunas AR"] else "➖"
-            return f'<div class="text-center">{simbol}</div>'
+        # Status Pembayaran
+        df['Status Pembayaran'] = df[cols_detail].apply(
+            lambda val: f'<div class="text-center">{"✅" if str(val).strip() in ["Lunas DP", "Lunas AR"] else "➖"}</div>'
+        )
         
-        df['Status Pembayaran'] = df[cols_detail].apply(cek_pembayaran)
-        
-        # Logika Leasing (Jika kosong, isi "Tunai")
+        # Leasing
         df['Leasing'] = df[cols_leasing].fillna("Tunai")
         
-        # Sortir
-        order_map = {'TNVDC-KARAWANG': 1, 'TNVDC-CIBITUNG': 2, 'TPDC-
+        # Sorting
+        order_map = {'TNVDC-KARAWANG': 1, 'TNVDC-CIBITUNG': 2, 'TPDC-CBN': 3, 'TCUST': 4}
+        df['Urutan'] = df['Posisi'].map(order_map).fillna(5)
+        df = df.sort_values('Urutan')
+        
+        # Filter
+        sales_list = ["Semua Salesman"] + sorted(df[cols_sales].dropna().unique().tolist())
+        selected_sales = st.selectbox("👔 Filter Salesman", sales_list)
+        f_df = df[df[cols_sales] == selected_sales] if selected_sales != "Semua Salesman" else df
+        
+        # Metrics
+        cols = st.columns(4)
+        labels = ['TNVDC-KARAWANG', 'TNVDC-CIBITUNG', 'TPDC-CBN', 'TCUST']
+        for i, loc in enumerate(labels):
+            cols[i].markdown(f'<div class="metric-card">📍 {loc}<br><h2>{len(f_df[f_df.Posisi == loc])}</h2></div>', unsafe_allow_html=True)
+            
+        # Tabel
+        st.markdown("### 📋 Detail Status Unit")
+        d_df = f_df.copy()
+        d_df['Customer & Salesman'] = d_df.apply(lambda x: f'<div class="customer-name">{x[cols_cust]}</div><div class="sales-name">👤 {x[cols_sales]}</div>', axis=1)
+        
+        final_df = d_df[['Customer & Salesman', cols_equip, 'Leasing', cols_detail, 'Status Pembayaran', cols_status, 'Posisi']]
+        final_df = final_df.rename(columns={cols_equip: 'No. Rangka', cols_detail: 'Detail', cols_status: 'Status Kirim'})
+        
+        st.write(final_df.to_html(escape=False, index=False), unsafe_allow_html=True)
+    else:
+        st.info("Belum ada data. Silakan upload file di tab 'Admin & Upload'.")
