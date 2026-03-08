@@ -45,7 +45,6 @@ with tab_admin:
 
 # --- TAB MONITORING ---
 with tab_monitor:
-    # Header Judul
     st.markdown("""
         <div style="text-align: center; margin-bottom: 25px;">
             <h2 style="color: white; font-weight: bold; margin-bottom: 5px;">Dashboard Monitoring Unit TSO-Dramaga Bogor</h2>
@@ -64,6 +63,7 @@ with tab_monitor:
         cols_sales = [c for c in df.columns if 'Salesman Name' in c][0]
         cols_equip = [c for c in df.columns if 'Equipment' in c][0]
         cols_detail = [c for c in df.columns if 'Detail' in c][0]
+        cols_status = [c for c in df.columns if 'Status Kirim' in c][0] # Kolom baru
         func_cols = [c for c in df.columns if 'Func.Loc' in c]
         
         def get_posisi(row):
@@ -97,11 +97,15 @@ with tab_monitor:
             lambda x: f'<div class="customer-name">{x[cols_cust]}</div><div class="sales-name">👤 {x[cols_sales]}</div>', axis=1
         )
         
-        # Posisi dipindah ke paling kanan sesuai permintaan
-        final_df = display_df[['Customer & Salesman', cols_equip, cols_detail, 'Posisi']]
-        final_df = final_df.rename(columns={cols_equip: 'No. Rangka', cols_detail: 'Detail'})
+        # Penambahan kolom Status Kirim sebelum Posisi
+        final_df = display_df[['Customer & Salesman', cols_equip, cols_detail, cols_status, 'Posisi']]
+        final_df = final_df.rename(columns={
+            cols_equip: 'No. Rangka', 
+            cols_detail: 'Detail', 
+            cols_status: 'Status Kirim'
+        })
         
         st.write(final_df.to_html(escape=False, index=False), unsafe_allow_html=True)
         
     else:
-        st.info("Belum ada data. Silakan upload file di tab 'Admin & Upload'.")
+        st.info("Belum ada data. Silakan upload file di
